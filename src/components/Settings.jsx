@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { exportBackup, importBackup } from '../utils/storage';
+import { GOOGLE_APPS_SCRIPT_CODE } from '../utils/googleSheets';
 import { 
   Settings as SettingsIcon, 
   Download, 
@@ -13,7 +14,11 @@ import {
   KeyRound,
   Users,
   Eye,
-  EyeOff
+  EyeOff,
+  Cloud,
+  RefreshCw,
+  Copy,
+  Check
 } from 'lucide-react';
 
 export default function Settings() {
@@ -26,11 +31,17 @@ export default function Settings() {
     usersList, 
     createUserAccount, 
     removeUserAccount, 
-    logout 
+    logout,
+    isSyncing,
+    syncFromCloud,
+    syncToCloud
   } = useApp();
 
   const [currency, setCurrency] = useState(settings.currency || '₹');
   const [appName, setAppName] = useState(settings.appName || 'Labor Handler');
+  const [googleSheetUrl, setGoogleSheetUrl] = useState(settings.googleSheetUrl || '');
+  const [copiedScript, setCopiedScript] = useState(false);
+  const [showScriptGuide, setShowScriptGuide] = useState(false);
 
   // User Creation State (Admin Only)
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -48,7 +59,14 @@ export default function Settings() {
 
   const handleSaveSettings = (e) => {
     e.preventDefault();
-    updateSettings({ currency, appName });
+    updateSettings({ currency, appName, googleSheetUrl: googleSheetUrl.trim() });
+  };
+
+  const handleCopyScript = () => {
+    navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
+    setCopiedScript(true);
+    showNotification('Apps Script code copied to clipboard!');
+    setTimeout(() => setCopiedScript(false), 3000);
   };
 
   const handleCreateUser = (e) => {
@@ -127,9 +145,9 @@ export default function Settings() {
       <div className="bg-slate-800 rounded-2xl border border-slate-700/80 p-4 shadow-sm">
         <h2 className="text-lg font-bold text-white flex items-center space-x-2">
           <SettingsIcon className="w-5 h-5 text-amber-400" />
-          <span>App Preferences</span>
+          <span>App Preferences & Cloud Sync</span>
         </h2>
-        <p className="text-xs text-slate-400 mt-0.5">Customize display settings and backup your data</p>
+        <p className="text-xs text-slate-400 mt-0.5">Connect Google Sheet database, manage users and backups</p>
       </div>
 
       {/* Account Info */}
@@ -158,6 +176,95 @@ export default function Settings() {
           >
             Logout
           </button>
+        </div>
+      </div>
+
+      {/* GOOGLE SHEETS CLOUD DATABASE INTEGRATION */}
+      <div className="bg-slate-800 rounded-2xl border border-emerald-500/30 p-4 space-y-3 bg-emerald-500/5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
+              <Cloud className="w-4 h-4" />
+              <span>Google Sheet Database & Sync</span>
+            </h3>
+            <p className="text-[11px] text-slate-400 mt-0.5">Use a Google Sheet as a live cloud database across all devices</p>
+          </div>
+
+          {settings.googleSheetUrl && (
+            <span className="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
+              Connected
+            </span>
+          )}
+        </div>
+
+        <div className="space-y-3 pt-1">
+          <div>
+            <label className="block text-xs font-medium text-slate-400 mb-1">
+              Google Sheet Webhook URL
+            </label>
+            <input
+              type="url"
+              placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+              value={googleSheetUrl}
+              onChange={(e) => setGoogleSheetUrl(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-emerald-500"
+            />
+          </div>
+
+          <div className="flex space-x-2">
+            <button
+              type="button"
+              onClick={handleSaveSettings}
+              className="w-1/2 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold rounded-xl shadow"
+            >
+              Save URL
+            </button>
+
+            <button
+              type="button"
+              disabled={isSyncing || !settings.googleSheetUrl}
+              onClick={async () => {
+                const pulled = await syncFromCloud();
+                if (!pulled) await syncToCloud();
+              }}
+              className="w-1/2 py-2 bg-slate-900 border border-slate-700 hover:border-emerald-500/50 text-emerald-400 text-xs font-bold rounded-xl flex items-center justify-center space-x-1 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+            </button>
+          </div>
+
+          <div className="pt-2 border-t border-slate-700/60">
+            <button
+              type="button"
+              onClick={() => setShowScriptGuide(!showScriptGuide)}
+              className="text-xs text-amber-400 font-semibold hover:underline flex items-center space-x-1"
+            >
+              <span>{showScriptGuide ? 'Hide Setup Guide' : '📖 How to Create Google Sheet Database (1 Min Guide)'}</span>
+            </button>
+
+            {showScriptGuide && (
+              <div className="mt-3 p-3 bg-slate-900/90 rounded-xl border border-slate-700/80 text-xs text-slate-300 space-y-2.5 leading-relaxed">
+                <ol className="list-decimal pl-4 space-y-1.5">
+                  <li>Create a new blank Google Sheet at <a href="https://sheets.new" target="_blank" rel="noreferrer" className="text-amber-400 underline">sheets.new</a>.</li>
+                  <li>Click <strong>Extensions</strong> &gt; <strong>Apps Script</strong>.</li>
+                  <li>Delete any existing code, then click the button below to copy the script code.</li>
+                  <li>Paste the code into the script editor and click <strong>Deploy</strong> &gt; <strong>New deployment</strong>.</li>
+                  <li>Select type <strong>Web App</strong>, set Execute as: <strong>Me</strong>, and Who has access: <strong>Anyone</strong>.</li>
+                  <li>Click <strong>Deploy</strong>, copy the Web App URL, and paste it into the box above!</li>
+                </ol>
+
+                <button
+                  type="button"
+                  onClick={handleCopyScript}
+                  className="w-full py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl font-bold flex items-center justify-center space-x-1.5 transition-colors"
+                >
+                  {copiedScript ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                  <span>{copiedScript ? 'Apps Script Code Copied!' : 'Copy Google Apps Script Code'}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
