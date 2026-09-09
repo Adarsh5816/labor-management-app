@@ -5,6 +5,8 @@ import {
   loginUser as storageLogin, 
   logoutUser as storageLogout,
   registerUser as storageRegister,
+  getUsers,
+  deleteUser as storageDeleteUser,
   getSettings,
   saveSettings as storageSaveSettings,
   getLabors,
@@ -21,11 +23,12 @@ const AppContext = createContext();
 
 export function AppProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [usersList, setUsersList] = useState([]);
   const [settings, setSettings] = useState({ currency: '₹', appName: 'Labor Handler' });
   const [labors, setLabors] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [payments, setPayments] = useState([]);
-  const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'labors' | 'reports' | 'payments' | 'settings'
+  const [activeTab, setActiveTab] = useState('attendance');
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
     return d.toISOString().split('T')[0];
@@ -50,6 +53,7 @@ export function AppProvider({ children }) {
   };
 
   const refreshData = () => {
+    setUsersList(getUsers());
     setSettings(getSettings());
     setLabors(getLabors());
     setAttendance(getAttendance());
@@ -68,16 +72,22 @@ export function AppProvider({ children }) {
     }
   };
 
-  const register = (username, pin, name) => {
+  const createUserAccount = (username, pin, name, role = 'user') => {
     try {
-      const newUser = storageRegister(username, pin, name);
-      setUser(newUser);
-      showNotification('Account created successfully!');
+      storageRegister(username, pin, name, role);
+      refreshData();
+      showNotification(`User @${username} created successfully!`);
       return true;
     } catch (err) {
       showNotification(err.message, 'error');
       return false;
     }
+  };
+
+  const removeUserAccount = (username) => {
+    storageDeleteUser(username);
+    refreshData();
+    showNotification(`User @${username} deleted`, 'info');
   };
 
   const logout = () => {
@@ -125,8 +135,10 @@ export function AppProvider({ children }) {
     <AppContext.Provider
       value={{
         user,
+        usersList,
         login,
-        register,
+        createUserAccount,
+        removeUserAccount,
         logout,
         settings,
         updateSettings,

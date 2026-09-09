@@ -39,7 +39,7 @@ export function getDatesInRange(startDateStr, endDateStr) {
 export function getCurrentWeekRange() {
   const now = new Date();
   const day = now.getDay();
-  const diffToMon = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
+  const diffToMon = now.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(now.setDate(diffToMon));
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
@@ -96,25 +96,38 @@ export function initStorage() {
 
   // Seed default user if no user exists
   if (!localStorage.getItem(KEYS.USERS)) {
-    const defaultUser = { username: 'admin', pin: '1234', name: 'Contractor Supervisor' };
+    const defaultUser = { username: 'admin', pin: '1234', name: 'System Admin', role: 'admin', createdAt: new Date().toISOString() };
     setItem(KEYS.USERS, [defaultUser]);
   }
 }
 
-// AUTH FUNCTIONS
+// AUTH & USER MANAGEMENT FUNCTIONS
 export function getUsers() {
   return getItem(KEYS.USERS, []);
 }
 
-export function registerUser(username, pin, name) {
+export function registerUser(username, pin, name, role = 'user') {
   const users = getUsers();
   if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
-    throw new Error('User already exists');
+    throw new Error('User with this username already exists');
   }
-  const newUser = { username, pin, name };
+  const newUser = { 
+    username: username.trim(), 
+    pin: pin.trim(), 
+    name: name.trim(),
+    role,
+    createdAt: new Date().toISOString()
+  };
   users.push(newUser);
   setItem(KEYS.USERS, users);
   return newUser;
+}
+
+export function deleteUser(username) {
+  let users = getUsers();
+  users = users.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+  setItem(KEYS.USERS, users);
+  return users;
 }
 
 export function loginUser(username, pin) {
@@ -179,7 +192,7 @@ export function deleteLabor(laborId) {
   labors = labors.filter(l => l.id !== laborId);
   setItem(KEYS.LABORS, labors);
   
-  // also clean up attendance and payments
+  // clean up attendance and payments
   let attendance = getItem(KEYS.ATTENDANCE, []);
   attendance = attendance.filter(a => a.laborId !== laborId);
   setItem(KEYS.ATTENDANCE, attendance);
