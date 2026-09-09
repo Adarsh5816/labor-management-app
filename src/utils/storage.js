@@ -96,7 +96,7 @@ export function initStorage() {
 
   // Seed default user if no user exists
   if (!localStorage.getItem(KEYS.USERS)) {
-    const defaultUser = { username: 'admin', pin: '1234', name: 'System Admin', role: 'admin', createdAt: new Date().toISOString() };
+    const defaultUser = { username: 'admin', pin: '1234', name: 'Master Admin', role: 'admin', createdAt: new Date().toISOString() };
     setItem(KEYS.USERS, [defaultUser]);
   }
 }
@@ -106,7 +106,7 @@ export function getUsers() {
   return getItem(KEYS.USERS, []);
 }
 
-export function registerUser(username, pin, name, role = 'user') {
+export function registerUser(username, pin, name, role = 'supervisor') {
   const users = getUsers();
   if (users.find(u => u.username.toLowerCase() === username.toLowerCase())) {
     throw new Error('User with this username already exists');
@@ -115,7 +115,7 @@ export function registerUser(username, pin, name, role = 'user') {
     username: username.trim(), 
     pin: pin.trim(), 
     name: name.trim(),
-    role,
+    role: role || 'supervisor',
     createdAt: new Date().toISOString()
   };
   users.push(newUser);
