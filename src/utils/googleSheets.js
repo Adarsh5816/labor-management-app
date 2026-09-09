@@ -1,6 +1,4 @@
 // Google Apps Script template code to paste into Google Sheet Extensions -> Apps Script
-export className = '';
-
 export const GOOGLE_APPS_SCRIPT_CODE = `
 // Google Apps Script for Labor Handler App
 function doGet(e) {
@@ -15,7 +13,7 @@ function doPost(e) {
     var props = PropertiesService.getScriptProperties();
     props.setProperty('LABOR_APP_DATA', contents);
     
-    // Also write readable sheets if needed
+    // Also write readable sheets
     var data = JSON.parse(contents);
     updateSheetTabs(data);
 
@@ -69,9 +67,9 @@ export async function pushToGoogleSheet(url, appData) {
 
   try {
     const payload = JSON.stringify(appData);
-    const response = await fetch(url, {
+    await fetch(url, {
       method: 'POST',
-      mode: 'cors',
+      mode: 'no-cors',
       headers: {
         'Content-Type': 'text/plain;charset=utf-8',
       },
@@ -80,19 +78,7 @@ export async function pushToGoogleSheet(url, appData) {
     return true;
   } catch (err) {
     console.error('Google Sheet Push Error:', err);
-    // fallback with no-cors if CORS policy blocks response reading
-    try {
-      await fetch(url, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(appData)
-      });
-      return true;
-    } catch (e) {
-      console.error('Fallback push error:', e);
-      return false;
-    }
+    return false;
   }
 }
 
