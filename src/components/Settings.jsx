@@ -11,7 +11,9 @@ import {
   UserPlus,
   ShieldCheck,
   KeyRound,
-  Users
+  Users,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export default function Settings() {
@@ -36,8 +38,13 @@ export default function Settings() {
   const [newName, setNewName] = useState('');
   const [newPin, setNewPin] = useState('');
   const [newRole, setNewRole] = useState('supervisor');
+  const [showPinsMap, setShowPinsMap] = useState({});
 
   const isAdmin = user?.role === 'admin' || user?.username.toLowerCase() === 'admin';
+
+  const toggleShowPin = (username) => {
+    setShowPinsMap(prev => ({ ...prev, [username]: !prev[username] }));
+  };
 
   const handleSaveSettings = (e) => {
     e.preventDefault();
@@ -48,7 +55,7 @@ export default function Settings() {
     e.preventDefault();
     if (!newUsername.trim() || !newPin.trim() || !newName.trim()) return;
 
-    const success = createUserAccount(newUsername, newPin, newName, newRole);
+    const success = createUserAccount(newUsername.trim(), newPin.trim(), newName.trim(), newRole);
     if (success) {
       setNewUsername('');
       setNewName('');
@@ -154,16 +161,16 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* USER MANAGEMENT (ADMIN ONLY - HIDDEN FOR SUPERVISORS / LABOR HANDLERS) */}
+      {/* USER MANAGEMENT (ADMIN ONLY) */}
       {isAdmin && (
         <div className="bg-slate-800 rounded-2xl border border-amber-500/30 p-4 space-y-3 bg-amber-500/5">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
                 <Users className="w-4 h-4" />
-                <span>Admin User Management</span>
+                <span>Admin User Management ({usersList.length})</span>
               </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Only Master Admin can create supervisor accounts</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">Master Admin can add and manage user logins</p>
             </div>
 
             <button
@@ -177,34 +184,51 @@ export default function Settings() {
 
           {/* Existing Users Directory */}
           <div className="space-y-2 pt-2">
-            {usersList.map((u) => (
-              <div
-                key={u.username}
-                className="bg-slate-900/90 p-3 rounded-xl border border-slate-700/60 flex items-center justify-between text-xs"
-              >
-                <div>
-                  <div className="font-bold text-white flex items-center space-x-2">
-                    <span>{u.name || u.username}</span>
-                    <span className="text-[10px] px-1.5 py-0.2 bg-slate-800 text-amber-400 border border-slate-700 rounded">
-                      @{u.username}
-                    </span>
-                    <span className="text-[10px] text-slate-400 uppercase">
-                      ({u.role || 'supervisor'})
-                    </span>
-                  </div>
-                </div>
+            {usersList.map((u) => {
+              const isPinVisible = showPinsMap[u.username];
+              return (
+                <div
+                  key={u.username}
+                  className="bg-slate-900/90 p-3 rounded-xl border border-slate-700/60 flex items-center justify-between text-xs"
+                >
+                  <div>
+                    <div className="font-bold text-white flex items-center space-x-2">
+                      <span>{u.name || u.username}</span>
+                      <span className="text-[10px] px-1.5 py-0.2 bg-slate-800 text-amber-400 border border-slate-700 rounded">
+                        @{u.username}
+                      </span>
+                      <span className="text-[10px] text-slate-400 uppercase">
+                        ({u.role || 'supervisor'})
+                      </span>
+                    </div>
 
-                {u.username.toLowerCase() !== user?.username.toLowerCase() && (
-                  <button
-                    onClick={() => handleDeleteUser(u)}
-                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
-                    title="Delete User Account"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            ))}
+                    <div className="text-slate-400 text-[11px] mt-1 flex items-center space-x-2">
+                      <span className="flex items-center space-x-1">
+                        <KeyRound className="w-3 h-3 text-slate-500" />
+                        <span>PIN: {isPinVisible ? <strong className="text-amber-400">{u.pin}</strong> : '••••'}</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => toggleShowPin(u.username)}
+                        className="text-slate-500 hover:text-slate-300 ml-1"
+                      >
+                        {isPinVisible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {u.username.toLowerCase() !== user?.username.toLowerCase() && (
+                    <button
+                      onClick={() => handleDeleteUser(u)}
+                      className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+                      title="Delete User Account"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -323,7 +347,7 @@ export default function Settings() {
             <div className="flex justify-between items-center border-b border-slate-700/60 pb-3">
               <h3 className="text-lg font-bold text-white flex items-center space-x-2">
                 <UserPlus className="w-5 h-5 text-amber-400" />
-                <span>Create Supervisor Account</span>
+                <span>Create User Account</span>
               </h3>
               <button onClick={() => setShowAddUserModal(false)} className="text-slate-400 hover:text-white">✕</button>
             </div>
@@ -334,7 +358,7 @@ export default function Settings() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. John Supervisor"
+                  placeholder="e.g. Andrew Smith"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-amber-500"
@@ -346,7 +370,7 @@ export default function Settings() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. supervisor1"
+                  placeholder="e.g. andrew"
                   value={newUsername}
                   onChange={(e) => setNewUsername(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs focus:outline-none focus:border-amber-500"
